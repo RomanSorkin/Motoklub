@@ -62,6 +62,7 @@ model RouteImage {
 model Comment {
   id        String   @id @default(cuid())
   text      String
+  imageKey  String?
   createdAt DateTime @default(now())
 
   routeId  String
