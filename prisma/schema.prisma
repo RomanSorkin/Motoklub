@@ -1,0 +1,87 @@
+// Datový model webu motorkářské skupiny
+// Dokumentace Prisma: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(MEMBER)
+  approved     Boolean  @default(false) // nový člen čeká na schválení adminem
+  createdAt    DateTime @default(now())
+
+  routes   Route[]
+  comments Comment[]
+  ratings  Rating[]
+}
+
+model Route {
+  id         String   @id @default(cuid())
+  title      String
+  description String
+  distanceKm Float?
+  difficulty String? // např. "lehká", "střední", "těžká"
+  gpxKey     String? // klíč souboru v úložišti (nebo externí URL)
+  gpxIsExternal Boolean @default(false)
+  createdAt  DateTime @default(now())
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  images   RouteImage[]
+  comments Comment[]
+  ratings  Rating[]
+
+  @@index([authorId])
+}
+
+model RouteImage {
+  id      String @id @default(cuid())
+  key     String // klíč souboru v úložišti
+  order   Int    @default(0)
+  routeId String
+  route   Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([routeId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  text      String
+  createdAt DateTime @default(now())
+
+  routeId  String
+  route    Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([routeId])
+}
+
+model Rating {
+  id     String @id @default(cuid())
+  value  Int // 1..5
+
+  routeId  String
+  route    Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // jeden uživatel = jedno hodnocení dané trasy
+  @@unique([routeId, authorId])
+  @@index([routeId])
+}
