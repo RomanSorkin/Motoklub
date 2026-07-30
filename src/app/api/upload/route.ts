@@ -17,37 +17,61 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Nejsi přihlášen." }, { status: 401 });
   }
 
-  const routeId = req.headers.get("x-route-id") || "";
   const kind = req.headers.get("x-kind") || "";
   const filename = decodeURIComponent(req.headers.get("x-filename") || "soubor");
-
-  const route = await prisma.route.findUnique({ where: { id: routeId } });
-  if (!route || route.authorId !== user.id)
-    return NextResponse.json({ error: "Trasa nenalezena." }, { status: 404 });
 
   const buf = Buffer.from(await req.arrayBuffer());
   if (buf.length === 0)
     return NextResponse.json({ error: "Prázdný soubor." }, { status: 400 });
   if (buf.length > 12 * 1024 * 1024)
-    return NextResponse.json({ error: `Soubor ${filename} je příliš velký (max 12 MB).` }, { status: 400 });
+    return NextResponse.json(
+      { error: `Soubor ${filename} je příliš velký (max 12 MB).` },
+      { status: 400 }
+    );
 
   const safeExt = (path.extname(filename) || "").replace(/[^a-zA-Z0-9.]/g, "");
-  const subdir = kind === "gpx" ? "gpx" : "images";
-  const key = `${subdir}/${crypto.randomUUID()}${safeExt}`;
-  const full = path.join(UPLOAD_DIR, key);
 
-  await fs.mkdir(path.dirname(full), { recursive: true });
-  await fs.writeFile(full, buf);
+  const store = async (subdir: string) => {
+    const key = `${subdir}/${crypto.randomUUID()}${safeExt}`;
+    const full = path.join(UPLOAD_DIR, key);
+    await fs.mkdir(path.dirname(full), { recursive: true });
+    await fs.writeFile(full, buf);
+    return key;
+  };
+
+  // Fotka ke komentáři
+  if (kind === "comment") {
+    const commentId = req.headers.get("x-comment-id") || "";
+    const comment = await prisma.comment.findUnique({ where: { id: commentId } });
+    if (!comment || comment.authorId !== user.id)
+      return NextResponse.json({ error: "Komentář nenalezen." }, { status: 404 });
+    const key = await store("comments");
+    await prisma.comment.update({
+      where: { id: comment.id },
+      data: { imageKey: key },
+    });
+    return NextResponse.json({ ok: true, key });
+  }
+
+  // GPX nebo obrázek k trase
+  const routeId = req.headers.get("x-route-id") || "";
+  const route = await prisma.route.findUnique({ where: { id: routeId } });
+  if (!route || route.authorId !== user.id)
+    return NextResponse.json({ error: "Trasa nenalezena." }, { status: 404 });
 
   if (kind === "gpx") {
+    const key = await store("gpx");
     await prisma.route.update({
       where: { id: route.id },
       data: { gpxKey: key, gpxIsExternal: false },
     });
-  } else {
-    const count = await prisma.routeImage.count({ where: { routeId: route.id } });
-    await prisma.routeImage.create({ data: { key, order: count, routeId: route.id } });
+    return NextResponse.json({ ok: true, key });
   }
 
+  const key = await store("images");
+  const count = await prisma.routeImage.count({ where: { routeId: route.id } });
+  await prisma.routeImage.create({
+    data: { key, order: count, routeId: route.id },
+  });
   return NextResponse.json({ ok: true, key });
 }
