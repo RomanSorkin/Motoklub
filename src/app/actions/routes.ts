@@ -111,3 +111,25 @@ export async function removeGpxAction(formData: FormData) {
   revalidatePath(`/routes/${id}/edit`);
   revalidatePath(`/routes/${id}`);
 }
+
+export async function deleteCommentAction(formData: FormData) {
+  const commentId = String(formData.get("commentId") || "");
+  const user = await getCurrentUser();
+  if (!user || !user.approved) redirect("/login");
+
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    include: { route: { select: { authorId: true } } },
+  });
+  if (!comment) return;
+
+  const allowed =
+    comment.authorId === user.id ||
+    comment.route.authorId === user.id ||
+    user.role === "ADMIN";
+  if (!allowed) redirect(`/routes/${comment.routeId}`);
+
+  await prisma.comment.delete({ where: { id: commentId } });
+  if (comment.imageKey) await tryDeleteFile(comment.imageKey);
+  revalidatePath(`/routes/${comment.routeId}`);
+}
