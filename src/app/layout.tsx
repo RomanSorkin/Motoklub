@@ -20,7 +20,7 @@ export default async function RootLayout({
     <html lang="cs">
       <body>
         <nav className="nav">
-          <div className="wrap" style={{ height: 80 }}>
+          <div className="wrap" style={{ height: 120 }}>
             <Link
               href="/"
               className="brand"
@@ -29,7 +29,7 @@ export default async function RootLayout({
               <img
                 src="/logo.png"
                 alt="North Moravia Dirt Riders"
-                style={{ height: 60, width: 60, objectFit: "contain" }}
+                style={{ height: 90, width: 90, objectFit: "contain" }}
               />
               <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.05 }}>
                 <span style={{ fontSize: 15 }}>North Moravia Dirt Riders</span>
