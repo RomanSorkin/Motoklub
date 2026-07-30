@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { rateAction } from "../../actions/routes";
+import { rateAction, deleteCommentAction } from "../../actions/routes";
 import RouteMap from "@/components/RouteMap";
 import CommentForm from "@/components/CommentForm";
 import DeleteRouteButton from "@/components/DeleteRouteButton";
@@ -138,28 +138,57 @@ export default async function RouteDetail({
       {route.comments.length === 0 ? (
         <p className="empty">Zatím žádné komentáře. Buď první!</p>
       ) : (
-        route.comments.map((c) => (
-          <div className="comment" key={c.id}>
-            <span className="who">{c.author.name}</span>
-            <span className="when">{new Date(c.createdAt).toLocaleDateString("cs-CZ")}</span>
-            <p>{c.text}</p>
-            {c.imageKey && (
-              <a href={fileUrl(c.imageKey)} target="_blank" rel="noreferrer">
-                <img
-                  src={fileUrl(c.imageKey)}
-                  alt=""
-                  style={{
-                    marginTop: 8,
-                    maxWidth: 260,
-                    width: "100%",
-                    borderRadius: 10,
-                    border: "1px solid var(--line)",
-                  }}
-                />
-              </a>
-            )}
-          </div>
-        ))
+        route.comments.map((c) => {
+          const canDeleteComment =
+            !!user &&
+            user.approved &&
+            (c.authorId === user.id ||
+              route.authorId === user.id ||
+              user.role === "ADMIN");
+          return (
+            <div className="comment" key={c.id}>
+              <span className="who">{c.author.name}</span>
+              <span className="when">
+                {new Date(c.createdAt).toLocaleDateString("cs-CZ")}
+              </span>
+              {canDeleteComment && (
+                <form action={deleteCommentAction} style={{ display: "inline", marginLeft: 8 }}>
+                  <input type="hidden" name="commentId" value={c.id} />
+                  <button
+                    type="submit"
+                    title="Smazat komentář"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "var(--red)",
+                      cursor: "pointer",
+                      fontSize: 12,
+                      padding: 0,
+                    }}
+                  >
+                    smazat
+                  </button>
+                </form>
+              )}
+              <p>{c.text}</p>
+              {c.imageKey && (
+                <a href={fileUrl(c.imageKey)} target="_blank" rel="noreferrer">
+                  <img
+                    src={fileUrl(c.imageKey)}
+                    alt=""
+                    style={{
+                      marginTop: 8,
+                      maxWidth: 260,
+                      width: "100%",
+                      borderRadius: 10,
+                      border: "1px solid var(--line)",
+                    }}
+                  />
+                </a>
+              )}
+            </div>
+          );
+        })
       )}
     </>
   );
