@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { addCommentAction, rateAction } from "../../actions/routes";
+import { rateAction } from "../../actions/routes";
 import RouteMap from "@/components/RouteMap";
+import CommentForm from "@/components/CommentForm";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +58,12 @@ export default async function RouteDetail({
       <div className="detail-meta">
         <span>👤 {route.author.name}</span>
         {route.distanceKm ? <span>📏 {route.distanceKm} km</span> : null}
-        <span>⭐ {avg ? `${avg.toFixed(1)} / 5 (${route.ratings.length})` : "zatím bez hodnocení"}</span>
+        <span>
+          ⭐{" "}
+          {avg
+            ? `${avg.toFixed(1)} / 5 (${route.ratings.length})`
+            : "zatím bez hodnocení"}
+        </span>
       </div>
 
       {gpxHref && <RouteMap gpxUrl={gpxHref} />}
@@ -82,12 +88,13 @@ export default async function RouteDetail({
         </div>
       )}
 
-      {/* Hodnocení */}
       <h2 className="section-h">Hodnocení</h2>
       {user && user.approved ? (
         <div>
           <p className="avg" style={{ marginBottom: 8 }}>
-            {myRating ? `Tvé hodnocení: ${myRating}/5. Klikni pro změnu:` : "Ohodnoť trasu:"}
+            {myRating
+              ? `Tvé hodnocení: ${myRating}/5. Klikni pro změnu:`
+              : "Ohodnoť trasu:"}
           </p>
           <form action={rateAction} className="stars">
             <input type="hidden" name="routeId" value={route.id} />
@@ -111,16 +118,9 @@ export default async function RouteDetail({
         </p>
       )}
 
-      {/* Komentáře */}
       <h2 className="section-h">Komentáře ({route.comments.length})</h2>
       {user && user.approved ? (
-        <form action={addCommentAction} className="card" style={{ marginBottom: 16 }}>
-          <input type="hidden" name="routeId" value={route.id} />
-          <textarea name="text" required placeholder="Napiš komentář…" />
-          <button className="btn" type="submit" style={{ marginTop: 12 }}>
-            Přidat komentář
-          </button>
-        </form>
+        <CommentForm routeId={route.id} />
       ) : (
         <p className="avg">
           <Link href="/login">Přihlas se</Link>, ať můžeš komentovat.
@@ -137,6 +137,21 @@ export default async function RouteDetail({
               {new Date(c.createdAt).toLocaleDateString("cs-CZ")}
             </span>
             <p>{c.text}</p>
+            {c.imageKey && (
+              <a href={fileUrl(c.imageKey)} target="_blank" rel="noreferrer">
+                <img
+                  src={fileUrl(c.imageKey)}
+                  alt=""
+                  style={{
+                    marginTop: 8,
+                    maxWidth: 260,
+                    width: "100%",
+                    borderRadius: 10,
+                    border: "1px solid var(--line)",
+                  }}
+                />
+              </a>
+            )}
           </div>
         ))
       )}
