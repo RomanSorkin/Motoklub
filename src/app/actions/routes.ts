@@ -1,9 +1,20 @@
 "use server";
 
+import { promises as fs } from "fs";
+import path from "path";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, requireApprovedUser } from "@/lib/auth";
+
+const UPLOAD_DIR = process.env.UPLOAD_DIR || "./uploads";
+
+async function tryDeleteFile(key: string | null) {
+  try {
+    if (!key || key.startsWith("http")) return;
+    await fs.unlink(path.join(UPLOAD_DIR, key));
+  } catch {}
+}
 
 export async function rateAction(formData: FormData) {
   let user;
@@ -70,4 +81,33 @@ export async function deleteRouteAction(formData: FormData) {
   await prisma.route.delete({ where: { id } });
   revalidatePath("/");
   redirect("/");
+}
+
+export async function deleteImageAction(formData: FormData) {
+  const imageId = String(formData.get("imageId") || "");
+  const image = await prisma.routeImage.findUnique({ where: { id: imageId } });
+  if (!image) return;
+  const ctx = await canManage(image.routeId);
+  if (!ctx) redirect("/login");
+
+  await prisma.routeImage.delete({ where: { id: imageId } });
+  await tryDeleteFile(image.key);
+  revalidatePath(`/routes/${image.routeId}/edit`);
+  revalidatePath(`/routes/${image.routeId}`);
+}
+
+export async function removeGpxAction(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const ctx = await canManage(id);
+  if (!ctx) redirect("/login");
+
+  const oldKey = ctx.route.gpxKey;
+  const wasExternal = ctx.route.gpxIsExternal;
+  await prisma.route.update({
+    where: { id },
+    data: { gpxKey: null, gpxIsExternal: false },
+  });
+  if (!wasExternal) await tryDeleteFile(oldKey);
+  revalidatePath(`/routes/${id}/edit`);
+  revalidatePath(`/routes/${id}`);
 }
