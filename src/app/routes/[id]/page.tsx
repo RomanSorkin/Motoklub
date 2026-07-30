@@ -1,0 +1,145 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { prisma } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import { addCommentAction, rateAction } from "../../actions/routes";
+import RouteMap from "@/components/RouteMap";
+
+export const dynamic = "force-dynamic";
+
+function fileUrl(key: string, external = false) {
+  return external ? key : `/api/files/${key}`;
+}
+
+export default async function RouteDetail({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const user = await getCurrentUser();
+
+  const route = await prisma.route.findUnique({
+    where: { id: params.id },
+    include: {
+      author: { select: { name: true } },
+      images: { orderBy: { order: "asc" } },
+      ratings: true,
+      comments: {
+        orderBy: { createdAt: "desc" },
+        include: { author: { select: { name: true } } },
+      },
+    },
+  });
+
+  if (!route) notFound();
+
+  const avg =
+    route.ratings.length > 0
+      ? route.ratings.reduce((s, x) => s + x.value, 0) / route.ratings.length
+      : null;
+  const myRating =
+    user && route.ratings.find((r) => r.authorId === user.id)?.value;
+
+  const gpxHref = route.gpxKey
+    ? fileUrl(route.gpxKey, route.gpxIsExternal)
+    : null;
+
+  return (
+    <>
+      <p style={{ marginTop: 20 }}>
+        <Link href="/">← zpět na trasy</Link>
+      </p>
+
+      <div className="detail-head">
+        <h1>{route.title}</h1>
+        {route.difficulty && <span className="tag">{route.difficulty}</span>}
+      </div>
+      <div className="detail-meta">
+        <span>👤 {route.author.name}</span>
+        {route.distanceKm ? <span>📏 {route.distanceKm} km</span> : null}
+        <span>⭐ {avg ? `${avg.toFixed(1)} / 5 (${route.ratings.length})` : "zatím bez hodnocení"}</span>
+      </div>
+
+      {gpxHref && <RouteMap gpxUrl={gpxHref} />}
+
+      <p style={{ whiteSpace: "pre-wrap", fontSize: 16 }}>{route.description}</p>
+
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "16px 0" }}>
+        {gpxHref && (
+          <a className="btn ghost" href={gpxHref} download>
+            ⬇️ Stáhnout GPX
+          </a>
+        )}
+      </div>
+
+      {route.images.length > 0 && (
+        <div className="gallery">
+          {route.images.map((img) => (
+            <a key={img.id} href={fileUrl(img.key)} target="_blank" rel="noreferrer">
+              <img src={fileUrl(img.key)} alt="" />
+            </a>
+          ))}
+        </div>
+      )}
+
+      {/* Hodnocení */}
+      <h2 className="section-h">Hodnocení</h2>
+      {user && user.approved ? (
+        <div>
+          <p className="avg" style={{ marginBottom: 8 }}>
+            {myRating ? `Tvé hodnocení: ${myRating}/5. Klikni pro změnu:` : "Ohodnoť trasu:"}
+          </p>
+          <form action={rateAction} className="stars">
+            <input type="hidden" name="routeId" value={route.id} />
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="submit"
+                name="value"
+                value={n}
+                className={myRating && n <= myRating ? "star-on" : ""}
+                title={`${n} z 5`}
+              >
+                ★
+              </button>
+            ))}
+          </form>
+        </div>
+      ) : (
+        <p className="avg">
+          <Link href="/login">Přihlas se</Link>, ať můžeš hodnotit.
+        </p>
+      )}
+
+      {/* Komentáře */}
+      <h2 className="section-h">Komentáře ({route.comments.length})</h2>
+      {user && user.approved ? (
+        <form action={addCommentAction} className="card" style={{ marginBottom: 16 }}>
+          <input type="hidden" name="routeId" value={route.id} />
+          <textarea name="text" required placeholder="Napiš komentář…" />
+          <button className="btn" type="submit" style={{ marginTop: 12 }}>
+            Přidat komentář
+          </button>
+        </form>
+      ) : (
+        <p className="avg">
+          <Link href="/login">Přihlas se</Link>, ať můžeš komentovat.
+        </p>
+      )}
+
+      {route.comments.length === 0 ? (
+        <p className="empty">Zatím žádné komentáře. Buď první!</p>
+      ) : (
+        route.comments.map((c) => (
+          <div className="comment" key={c.id}>
+            <span className="who">{c.author.name}</span>
+            <span className="when">
+              {new Date(c.createdAt).toLocaleDateString("cs-CZ")}
+            </span>
+            <p>{c.text}</p>
+          </div>
+        ))
+      )}
+    </>
+  );
+}
