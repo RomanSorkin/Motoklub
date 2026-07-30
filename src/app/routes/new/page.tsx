@@ -1,36 +1,42 @@
-"use client";
+export const dynamic = "force-dynamic";
 
-import { useFormState, useFormStatus } from "react-dom";
-import { createRouteAction } from "../../actions/routes";
-
-function SubmitBtn() {
-  const { pending } = useFormStatus();
-  return (
-    <button className="btn" type="submit" disabled={pending} style={{ marginTop: 20 }}>
-      {pending ? "Ukládám…" : "Uložit trasu"}
-    </button>
-  );
-}
-
-export default function NewRoutePage() {
-  const [state, formAction] = useFormState(createRouteAction, undefined);
-
+export default function NewRoutePage({
+  searchParams,
+}: {
+  searchParams: { error?: string };
+}) {
   return (
     <>
       <h1 className="page-title">Přidat trasu</h1>
       <p className="page-sub">Podělte se o pěknou vyjížďku s ostatními.</p>
 
-      <form action={formAction} className="form wide card" encType="multipart/form-data">
-        {state?.error && <div className="error">{state.error}</div>}
+      <form
+        action="/api/routes"
+        method="post"
+        encType="multipart/form-data"
+        className="form wide card"
+      >
+        {searchParams?.error && <div className="error">{searchParams.error}</div>}
 
         <label htmlFor="title">Název trasy *</label>
         <input id="title" name="title" type="text" required />
 
         <label htmlFor="description">Popis *</label>
-        <textarea id="description" name="description" required placeholder="Kudy trasa vede, co je cestou zajímavé, kde zastavit…" />
+        <textarea
+          id="description"
+          name="description"
+          required
+          placeholder="Kudy trasa vede, co je cestou zajímavé, kde zastavit…"
+        />
 
         <label htmlFor="distanceKm">Délka (km)</label>
-        <input id="distanceKm" name="distanceKm" type="text" inputMode="decimal" placeholder="např. 180" />
+        <input
+          id="distanceKm"
+          name="distanceKm"
+          type="text"
+          inputMode="decimal"
+          placeholder="např. 180"
+        />
 
         <label htmlFor="difficulty">Náročnost</label>
         <select id="difficulty" name="difficulty" defaultValue="">
@@ -46,13 +52,19 @@ export default function NewRoutePage() {
 
         <label htmlFor="gpxUrl">…nebo odkaz na GPX</label>
         <input id="gpxUrl" name="gpxUrl" type="url" placeholder="https://…" />
-        <div className="hint">Pokud vyplníš soubor i odkaz, použije se nahraný soubor.</div>
+        <div className="hint">
+          Pokud vyplníš soubor i odkaz, použije se nahraný soubor.
+        </div>
 
         <label htmlFor="images">Obrázky</label>
         <input id="images" name="images" type="file" accept="image/*" multiple />
-        <div className="hint">Můžeš přidat víc fotek najednou (max 8, každá do 8 MB).</div>
+        <div className="hint">
+          Můžeš přidat víc fotek najednou (max 8, každá do 8 MB).
+        </div>
 
-        <SubmitBtn />
+        <button className="btn" type="submit" style={{ marginTop: 20 }}>
+          Uložit trasu
+        </button>
       </form>
     </>
   );
