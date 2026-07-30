@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { rateAction } from "../../actions/routes";
 import RouteMap from "@/components/RouteMap";
 import CommentForm from "@/components/CommentForm";
+import DeleteRouteButton from "@/components/DeleteRouteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -41,9 +42,12 @@ export default async function RouteDetail({
   const myRating =
     user && route.ratings.find((r) => r.authorId === user.id)?.value;
 
-  const gpxHref = route.gpxKey
-    ? fileUrl(route.gpxKey, route.gpxIsExternal)
-    : null;
+  const canManage =
+    !!user &&
+    user.approved &&
+    (user.id === route.authorId || user.role === "ADMIN");
+
+  const gpxHref = route.gpxKey ? fileUrl(route.gpxKey, route.gpxIsExternal) : null;
 
   return (
     <>
@@ -59,12 +63,18 @@ export default async function RouteDetail({
         <span>👤 {route.author.name}</span>
         {route.distanceKm ? <span>📏 {route.distanceKm} km</span> : null}
         <span>
-          ⭐{" "}
-          {avg
-            ? `${avg.toFixed(1)} / 5 (${route.ratings.length})`
-            : "zatím bez hodnocení"}
+          ⭐ {avg ? `${avg.toFixed(1)} / 5 (${route.ratings.length})` : "zatím bez hodnocení"}
         </span>
       </div>
+
+      {canManage && (
+        <div style={{ display: "flex", gap: 10, margin: "4px 0 8px", flexWrap: "wrap" }}>
+          <Link href={`/routes/${route.id}/edit`} className="btn ghost sm">
+            ✏️ Upravit
+          </Link>
+          <DeleteRouteButton id={route.id} />
+        </div>
+      )}
 
       {gpxHref && <RouteMap gpxUrl={gpxHref} />}
 
@@ -92,9 +102,7 @@ export default async function RouteDetail({
       {user && user.approved ? (
         <div>
           <p className="avg" style={{ marginBottom: 8 }}>
-            {myRating
-              ? `Tvé hodnocení: ${myRating}/5. Klikni pro změnu:`
-              : "Ohodnoť trasu:"}
+            {myRating ? `Tvé hodnocení: ${myRating}/5. Klikni pro změnu:` : "Ohodnoť trasu:"}
           </p>
           <form action={rateAction} className="stars">
             <input type="hidden" name="routeId" value={route.id} />
@@ -133,9 +141,7 @@ export default async function RouteDetail({
         route.comments.map((c) => (
           <div className="comment" key={c.id}>
             <span className="who">{c.author.name}</span>
-            <span className="when">
-              {new Date(c.createdAt).toLocaleDateString("cs-CZ")}
-            </span>
+            <span className="when">{new Date(c.createdAt).toLocaleDateString("cs-CZ")}</span>
             <p>{c.text}</p>
             {c.imageKey && (
               <a href={fileUrl(c.imageKey)} target="_blank" rel="noreferrer">
