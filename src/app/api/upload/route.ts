@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   // GPX nebo obrázek k trase
   const routeId = req.headers.get("x-route-id") || "";
   const route = await prisma.route.findUnique({ where: { id: routeId } });
-  if (!route || route.authorId !== user.id)
+  if (!route || (route.authorId !== user.id && user.role !== "ADMIN"))
     return NextResponse.json({ error: "Trasa nenalezena." }, { status: 404 });
 
   if (kind === "gpx") {
