@@ -5,8 +5,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { logoutAction } from "./actions/auth";
 
 export const metadata: Metadata = {
-  title: "Moto klub — trasy a komunita",
-  description: "Web motorkářské skupiny: trasy, GPX, komentáře a hodnocení.",
+  title: "North Moravia Dirt Riders",
+  description: "TCT Severní Morava — trasy, GPX, komentáře a hodnocení.",
 };
 
 export default async function RootLayout({
@@ -21,8 +21,22 @@ export default async function RootLayout({
       <body>
         <nav className="nav">
           <div className="wrap">
-            <Link href="/" className="brand">
-              🏍️ Moto<span>Klub</span>
+            <Link
+              href="/"
+              className="brand"
+              style={{ display: "flex", alignItems: "center", gap: 10 }}
+            >
+              <img
+                src="/logo.png"
+                alt="North Moravia Dirt Riders"
+                style={{ height: 42, width: 42, objectFit: "contain" }}
+              />
+              <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.05 }}>
+                <span style={{ fontSize: 15 }}>North Moravia Dirt Riders</span>
+                <span style={{ fontSize: 11, color: "var(--dim)", fontWeight: 600, letterSpacing: ".02em" }}>
+                  TCT Severní Morava
+                </span>
+              </span>
             </Link>
             <div className="spacer" />
             {user ? (
@@ -55,7 +69,7 @@ export default async function RootLayout({
           </div>
         </nav>
         <main className="wrap">{children}</main>
-        <div className="footer">🏍️ MotoKlub · web motorkářské skupiny</div>
+        <div className="footer">North Moravia Dirt Riders · TCT Severní Morava</div>
       </body>
     </html>
   );
