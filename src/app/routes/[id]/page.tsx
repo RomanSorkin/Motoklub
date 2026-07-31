@@ -12,6 +12,21 @@ export const dynamic = "force-dynamic";
 function fileUrl(key: string, external = false) {
   return external ? key : `/api/files/${key}`;
 }
+function youtubeEmbed(url: string): string | null {
+  try {
+    const u = new URL(url);
+    let id = "";
+    if (u.hostname.includes("youtu.be")) id = u.pathname.slice(1);
+    else if (u.pathname.startsWith("/shorts/")) id = u.pathname.split("/")[2];
+    else if (u.pathname.startsWith("/embed/")) id = u.pathname.split("/")[2];
+    else id = u.searchParams.get("v") || "";
+    id = (id || "").split(/[/?&]/)[0];
+    if (!/^[a-zA-Z0-9_-]{6,15}$/.test(id)) return null;
+    return `https://www.youtube-nocookie.com/embed/${id}`;
+  } catch {
+    return null;
+  }
+}
 
 export default async function RouteDetail({
   params,
@@ -49,7 +64,10 @@ export default async function RouteDetail({
     user.approved &&
     (user.id === route.authorId || user.role === "ADMIN");
 
-  const gpxHref = route.gpxKey ? fileUrl(route.gpxKey, route.gpxIsExternal) : null;
+  const gpxHref = route.gpxKey
+    ? fileUrl(route.gpxKey, route.gpxIsExternal)
+    : null;
+  const ytEmbed = route.youtubeUrl ? youtubeEmbed(route.youtubeUrl) : null;
 
   return (
     <>
@@ -98,6 +116,30 @@ export default async function RouteDetail({
             </a>
           ))}
         </div>
+      )}
+
+      {ytEmbed && (
+        <>
+          <h2 className="section-h">Video</h2>
+          <div
+            style={{
+              position: "relative",
+              paddingBottom: "56.25%",
+              height: 0,
+              overflow: "hidden",
+              borderRadius: 14,
+              border: "1px solid var(--line)",
+            }}
+          >
+            <iframe
+              src={ytEmbed}
+              title="Video trasy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
+            />
+          </div>
+        </>
       )}
 
       <h2 className="section-h">Hodnocení</h2>
