@@ -53,7 +53,8 @@ export async function updateRouteAction(formData: FormData) {
   const description = String(formData.get("description") || "").trim();
   const distanceRaw = String(formData.get("distanceKm") || "").trim();
   const difficulty = String(formData.get("difficulty") || "").trim() || null;
-
+  const youtubeUrl = String(formData.get("youtubeUrl") || "").trim() || null;
+  
   if (!title || !description)
     redirect(`/routes/${id}/edit?error=${encodeURIComponent("Vyplň název i popis trasy.")}`);
 
@@ -65,6 +66,7 @@ export async function updateRouteAction(formData: FormData) {
       title,
       description,
       difficulty,
+      youtubeUrl,
       distanceKm: distanceKm !== null && !Number.isNaN(distanceKm) ? distanceKm : null,
     },
   });
