@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { rateAction, deleteCommentAction } from "../../actions/routes";
@@ -19,6 +19,8 @@ export default async function RouteDetail({
   params: { id: string };
 }) {
   const user = await getCurrentUser();
+  // Detail trasy je jen pro přihlášené (schválené) členy; náhled/seznam je veřejný.
+  if (!user || !user.approved) redirect("/login?detail=1");
 
   const route = await prisma.route.findUnique({
     where: { id: params.id },
