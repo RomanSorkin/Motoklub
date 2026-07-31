@@ -37,6 +37,7 @@ model Route {
   difficulty String? // např. "lehká", "střední", "těžká"
   gpxKey     String? // klíč souboru v úložišti (nebo externí URL)
   gpxIsExternal Boolean @default(false)
+  youtubeUrl String? // odkaz na YouTube video
   createdAt  DateTime @default(now())
 
   authorId String
