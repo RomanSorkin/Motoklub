@@ -38,6 +38,7 @@ model Route {
   gpxKey     String? // klíč souboru v úložišti (nebo externí URL)
   gpxIsExternal Boolean @default(false)
   youtubeUrl String? // odkaz na YouTube video
+  previewType String @default("photo") // "photo" | "map" – co ukázat v náhledu seznamu
   createdAt  DateTime @default(now())
 
   authorId String
