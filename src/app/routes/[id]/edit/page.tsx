@@ -72,6 +72,13 @@ export default async function EditRoutePage({
         />
         <div className="hint">Na detailu trasy se z odkazu zobrazí přehrávač. Nech prázdné pro odebrání videa.</div>
 
+        <label htmlFor="previewType">Náhled v seznamu tras</label>
+        <select id="previewType" name="previewType" defaultValue={route.previewType ?? "photo"}>
+          <option value="photo">Fotka</option>
+          <option value="map">Mapa trasy (obrys z GPX)</option>
+        </select>
+        <div className="hint">Volba „Mapa trasy" vykreslí v náhledu obrys trasy z nahraného GPX. Když trasa GPX nemá, použije se fotka.</div>
+
         <button className="btn" type="submit" style={{ marginTop: 20 }}>
           Uložit změny
         </button>
