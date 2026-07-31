@@ -16,7 +16,7 @@ function SubmitBtn() {
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { pending?: string };
+  searchParams: { pending?: string; detail?: string };
 }) {
   const [state, formAction] = useFormState(loginAction, undefined);
 
@@ -24,6 +24,12 @@ export default function LoginPage({
     <>
       <h1 className="page-title">Přihlášení</h1>
       <p className="page-sub">Přihlas se do klubového webu.</p>
+      {searchParams?.detail && (
+        <div className="success form">
+          Detail trasy je jen pro přihlášené členy. Přihlas se, nebo se{" "}
+          <a href="/register">zaregistruj</a>.
+        </div>
+      )}
 
       {searchParams?.pending && (
         <div className="success form">
