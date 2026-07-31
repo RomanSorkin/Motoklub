@@ -62,6 +62,16 @@ export default async function EditRoutePage({
           <option value="těžká">těžká</option>
         </select>
 
+        <label htmlFor="youtubeUrl">Odkaz na YouTube video</label>
+        <input
+          id="youtubeUrl"
+          name="youtubeUrl"
+          type="url"
+          defaultValue={route.youtubeUrl ?? ""}
+          placeholder="https://www.youtube.com/watch?v=..."
+        />
+        <div className="hint">Na detailu trasy se z odkazu zobrazí přehrávač. Nech prázdné pro odebrání videa.</div>
+
         <button className="btn" type="submit" style={{ marginTop: 20 }}>
           Uložit změny
         </button>
