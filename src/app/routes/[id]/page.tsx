@@ -6,6 +6,7 @@ import { rateAction, deleteCommentAction } from "../../actions/routes";
 import RouteMap from "@/components/RouteMap";
 import CommentForm from "@/components/CommentForm";
 import DeleteRouteButton from "@/components/DeleteRouteButton";
+import { readFile } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,81 @@ function youtubeEmbed(url: string): string | null {
   } catch {
     return null;
   }
+}
+
+function haversine(a: [number, number], b: [number, number]): number {
+  const R = 6371000;
+  const r = (d: number) => (d * Math.PI) / 180;
+  const dLat = r(b[0] - a[0]);
+  const dLon = r(b[1] - a[1]);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(r(a[0])) * Math.cos(r(b[0])) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+async function elevationProfile(key: string) {
+  const buf = await readFile(key);
+  if (!buf) return null;
+  const xml = buf.toString("utf8");
+
+  const raw: { lat: number; lon: number; ele: number }[] = [];
+  const blockRe = /<(trkpt|rtept)\b([^>]*)>([\s\S]*?)<\/\1>/g;
+  let m: RegExpExecArray | null;
+  while ((m = blockRe.exec(xml)) !== null) {
+    const lat = /lat="(-?\d+(?:\.\d+)?)"/.exec(m[2]);
+    const lon = /lon="(-?\d+(?:\.\d+)?)"/.exec(m[2]);
+    const ele = /<ele>\s*(-?\d+(?:\.\d+)?)\s*<\/ele>/.exec(m[3]);
+    if (lat && lon)
+      raw.push({ lat: +lat[1], lon: +lon[1], ele: ele ? +ele[1] : NaN });
+  }
+  if (raw.filter((p) => !Number.isNaN(p.ele)).length < 2) return null;
+
+  let lastE = NaN;
+  for (const p of raw) {
+    if (!Number.isNaN(p.ele)) lastE = p.ele;
+    else p.ele = lastE;
+  }
+  const pts = raw.filter((p) => !Number.isNaN(p.ele));
+  if (pts.length < 2) return null;
+
+  const dist: number[] = [0];
+  for (let i = 1; i < pts.length; i++)
+    dist[i] =
+      dist[i - 1] +
+      haversine([pts[i - 1].lat, pts[i - 1].lon], [pts[i].lat, pts[i].lon]);
+  const total = dist[dist.length - 1] || 1;
+
+  let asc = 0, desc = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const d = pts[i].ele - pts[i - 1].ele;
+    if (d > 0) asc += d;
+    else desc += -d;
+  }
+  const eles = pts.map((p) => p.ele);
+  const eMin = Math.min(...eles), eMax = Math.max(...eles);
+  const eSpan = eMax - eMin || 1;
+
+  const step = Math.ceil(pts.length / 250);
+  const W = 600, H = 140, pad = 8;
+  const xy: string[] = [];
+  for (let i = 0; i < pts.length; i += step) {
+    const x = (dist[i] / total) * W;
+    const y = pad + (H - 2 * pad) * (1 - (pts[i].ele - eMin) / eSpan);
+    xy.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+  }
+  const line = xy.join(" ");
+  const area = `0,${H} ${line} ${W},${H}`;
+
+  return {
+    distKm: total / 1000,
+    ascent: Math.round(asc),
+    descent: Math.round(desc),
+    min: Math.round(eMin),
+    max: Math.round(eMax),
+    line,
+    area,
+  };
 }
 
 export default async function RouteDetail({
@@ -67,7 +143,11 @@ export default async function RouteDetail({
   const gpxHref = route.gpxKey
     ? fileUrl(route.gpxKey, route.gpxIsExternal)
     : null;
-  const ytEmbed = route.youtubeUrl ? youtubeEmbed(route.youtubeUrl) : null;
+ const ytEmbed = route.youtubeUrl ? youtubeEmbed(route.youtubeUrl) : null;
+  const profile =
+    route.gpxKey && !route.gpxIsExternal
+      ? await elevationProfile(route.gpxKey).catch(() => null)
+      : null;
 
   return (
     <>
@@ -96,7 +176,32 @@ export default async function RouteDetail({
         </div>
       )}
 
-      {gpxHref && <RouteMap gpxUrl={gpxHref} />}
+     {gpxHref && <RouteMap gpxUrl={gpxHref} />}
+
+      {profile && (
+        <>
+          <h2 className="section-h">Výškový profil</h2>
+          <div className="detail-meta" style={{ marginBottom: 8 }}>
+            <span>📏 {profile.distKm.toFixed(1)} km</span>
+            <span>↑ {profile.ascent} m</span>
+            <span>↓ {profile.descent} m</span>
+            <span>⛰️ {profile.min}–{profile.max} m n. m.</span>
+          </div>
+          <div style={{ border: "1px solid var(--line)", borderRadius: 14, padding: 10, background: "var(--card)" }}>
+            <svg viewBox="0 0 600 140" preserveAspectRatio="none" style={{ width: "100%", height: 140, display: "block" }}>
+              <polygon points={profile.area} fill="rgba(255,122,26,0.15)" />
+              <polyline
+                points={profile.line}
+                fill="none"
+                stroke="#ff7a1a"
+                strokeWidth={2}
+                vectorEffect="non-scaling-stroke"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+        </>
+      )}
 
       <p style={{ whiteSpace: "pre-wrap", fontSize: 16 }}>{route.description}</p>
 
