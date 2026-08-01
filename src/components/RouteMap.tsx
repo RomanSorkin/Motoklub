@@ -3,7 +3,9 @@
 import { useEffect, useRef } from "react";
 import "leaflet/dist/leaflet.css";
 
-// Vykreslí GPX trasu do interaktivní mapy pomocí Leaflet + leaflet-gpx.
+const TRANSPARENT =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+
 export default function RouteMap({ gpxUrl }: { gpxUrl: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -18,7 +20,7 @@ export default function RouteMap({ gpxUrl }: { gpxUrl: string }) {
 
       const map = L.map(ref.current, { scrollWheelZoom: false });
       mapRef.current = map;
-      map.setView([49.8, 15.5], 7); // střed ČR jako výchozí
+      map.setView([49.8, 15.5], 7);
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
@@ -28,14 +30,46 @@ export default function RouteMap({ gpxUrl }: { gpxUrl: string }) {
       new L.GPX(gpxUrl, {
         async: true,
         marker_options: {
-          startIconUrl: "https://unpkg.com/leaflet-gpx@2.1.2/pin-icon-start.png",
-          endIconUrl: "https://unpkg.com/leaflet-gpx@2.1.2/pin-icon-end.png",
-          shadowUrl: "https://unpkg.com/leaflet-gpx@2.1.2/pin-shadow.png",
+          startIconUrl: TRANSPARENT,
+          endIconUrl: TRANSPARENT,
+          shadowUrl: TRANSPARENT,
         },
         polyline_options: { color: "#ff7a1a", weight: 5, opacity: 0.9 },
       })
         .on("loaded", (e: any) => {
-          if (!cancelled) map.fitBounds(e.target.getBounds(), { padding: [20, 20] });
+          if (cancelled) return;
+          const gpx = e.target;
+          map.fitBounds(gpx.getBounds(), { padding: [24, 24] });
+
+          let coords: any[] = [];
+          gpx.getLayers().forEach((layer: any) => {
+            if (typeof layer.getLatLngs === "function") {
+              const lls = layer.getLatLngs();
+              coords = coords.concat(Array.isArray(lls) ? lls.flat(Infinity) : []);
+            }
+          });
+          if (coords.length >= 2) {
+            const start = coords[0];
+            const finish = coords[coords.length - 1];
+            L.circleMarker(start, {
+              radius: 7,
+              color: "#12161c",
+              weight: 2,
+              fillColor: "#4fd18b",
+              fillOpacity: 1,
+            })
+              .bindTooltip("Start", { permanent: true, direction: "top" })
+              .addTo(map);
+            L.circleMarker(finish, {
+              radius: 7,
+              color: "#12161c",
+              weight: 2,
+              fillColor: "#ef6a6a",
+              fillOpacity: 1,
+            })
+              .bindTooltip("Cíl", { permanent: true, direction: "top" })
+              .addTo(map);
+          }
         })
         .on("error", (e: any) => {
           console.error("Chyba načtení GPX:", e);
