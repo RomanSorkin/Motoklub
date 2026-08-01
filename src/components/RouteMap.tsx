@@ -42,12 +42,15 @@ export default function RouteMap({ gpxUrl }: { gpxUrl: string }) {
           map.fitBounds(gpx.getBounds(), { padding: [24, 24] });
 
           let coords: any[] = [];
-          gpx.getLayers().forEach((layer: any) => {
+          const collect = (layer: any) => {
             if (typeof layer.getLatLngs === "function") {
               const lls = layer.getLatLngs();
               coords = coords.concat(Array.isArray(lls) ? lls.flat(Infinity) : []);
+            } else if (typeof layer.eachLayer === "function") {
+              layer.eachLayer(collect);
             }
-          });
+          };
+          gpx.eachLayer(collect);
           if (coords.length >= 2) {
             const start = coords[0];
             const finish = coords[coords.length - 1];
