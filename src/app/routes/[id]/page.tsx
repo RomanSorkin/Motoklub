@@ -107,7 +107,7 @@ async function elevationProfile(key: string) {
     startY: xy[0].y,
     endY: xy[xy.length - 1].y,
   };
-
+}
 export default async function RouteDetail({
   params,
 }: {
