@@ -84,13 +84,16 @@ async function elevationProfile(key: string) {
 
   const step = Math.ceil(pts.length / 250);
   const W = 600, H = 140, pad = 8;
-  const xy: string[] = [];
-  for (let i = 0; i < pts.length; i += step) {
+  const idxs: number[] = [];
+  for (let i = 0; i < pts.length; i += step) idxs.push(i);
+  if (idxs[idxs.length - 1] !== pts.length - 1) idxs.push(pts.length - 1);
+
+  const xy = idxs.map((i) => {
     const x = (dist[i] / total) * W;
     const y = pad + (H - 2 * pad) * (1 - (pts[i].ele - eMin) / eSpan);
-    xy.push(`${x.toFixed(1)},${y.toFixed(1)}`);
-  }
-  const line = xy.join(" ");
+    return { x, y };
+  });
+  const line = xy.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
   const area = `0,${H} ${line} ${W},${H}`;
 
   return {
@@ -101,8 +104,9 @@ async function elevationProfile(key: string) {
     max: Math.round(eMax),
     line,
     area,
+    startY: xy[0].y,
+    endY: xy[xy.length - 1].y,
   };
-}
 
 export default async function RouteDetail({
   params,
@@ -186,8 +190,9 @@ export default async function RouteDetail({
             <span>↑ {profile.ascent} m</span>
             <span>↓ {profile.descent} m</span>
             <span>⛰️ {profile.min}–{profile.max} m n. m.</span>
+            <span style={{ color: "var(--dim)" }}>🟢 start → 🔴 cíl</span>
           </div>
-          <div style={{ border: "1px solid var(--line)", borderRadius: 14, padding: 10, background: "var(--card)" }}>
+          <div style={{ position: "relative", border: "1px solid var(--line)", borderRadius: 14, padding: 10, background: "var(--card)" }}>
             <svg viewBox="0 0 600 140" preserveAspectRatio="none" style={{ width: "100%", height: 140, display: "block" }}>
               <polygon points={profile.area} fill="rgba(255,122,26,0.15)" />
               <polyline
@@ -199,6 +204,22 @@ export default async function RouteDetail({
                 strokeLinejoin="round"
               />
             </svg>
+            <span
+              title="Start"
+              style={{
+                position: "absolute", left: 10, top: 10 + profile.startY,
+                transform: "translate(-50%,-50%)", width: 12, height: 12,
+                borderRadius: "50%", background: "#4fd18b", border: "2px solid #12161c",
+              }}
+            />
+            <span
+              title="Cíl"
+              style={{
+                position: "absolute", right: 10, top: 10 + profile.endY,
+                transform: "translate(50%,-50%)", width: 12, height: 12,
+                borderRadius: "50%", background: "#ef6a6a", border: "2px solid #12161c",
+              }}
+            />
           </div>
         </>
       )}
